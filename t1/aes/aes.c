@@ -1,0 +1,231 @@
+/**
+  AES encryption/decryption demo program using OpenSSL EVP APIs
+  gcc -Wall aes_file.c -o aes_file -lcrypto
+
+  Modified to read input from a .txt file and write encrypted/decrypted output to files.
+  Usage: ./aes_file <key> <input_file.txt>
+  Outputs: output.enc (encrypted), output.dec.txt (decrypted)
+  Public domain code.
+  Original by Saju Pillai (saju.pillai@gmail.com), modified for file I/O.
+**/
+
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+
+/**
+ * Create a 256-bit key and IV using the supplied key_data. Salt can be added for taste.
+ * Fills in the encryption and decryption ctx objects and returns 0 on success
+ */
+int aes_init(unsigned char *key_data, int key_data_len, unsigned char *salt, EVP_CIPHER_CTX *e_ctx, 
+             EVP_CIPHER_CTX *d_ctx)
+{
+  int i, nrounds = 5;
+  unsigned char key[32], iv[32];
+  
+  i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha1(), salt, key_data, key_data_len, nrounds, key, iv);
+  if (i != 32) {
+    printf("Key size is %d bits - should be 256 bits\n", i);
+    return -1;
+  }
+
+  EVP_CIPHER_CTX_init(e_ctx);
+  EVP_EncryptInit_ex(e_ctx, EVP_aes_256_cbc(), NULL, key, iv);
+  EVP_CIPHER_CTX_init(d_ctx);
+  EVP_DecryptInit_ex(d_ctx, EVP_aes_256_cbc(), NULL, key, iv);
+
+  return 0;
+}
+
+/**
+ * Encrypt *len bytes of data
+ * All data going in & out is considered binary (unsigned char[])
+ */
+unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len)
+{
+  int c_len = *len + AES_BLOCK_SIZE, f_len = 0;
+  unsigned char *ciphertext = malloc(c_len);
+
+  EVP_EncryptInit_ex(e, NULL, NULL, NULL, NULL);
+  EVP_EncryptUpdate(e, ciphertext, &c_len, plaintext, *len);
+  EVP_EncryptFinal_ex(e, ciphertext + c_len, &f_len);
+
+  *len = c_len + f_len;
+  return ciphertext;
+}
+
+/**
+ * Decrypt *len bytes of ciphertext
+ */
+unsigned char *aes_decrypt(EVP_CIPHER_CTX *e, unsigned char *ciphertext, int *len)
+{
+  int p_len = *len, f_len = 0;
+  unsigned char *plaintext = malloc(p_len);
+  
+  EVP_DecryptInit_ex(e, NULL, NULL, NULL, NULL);
+  EVP_DecryptUpdate(e, plaintext, &p_len, ciphertext, *len);
+  EVP_DecryptFinal_ex(e, plaintext + p_len, &f_len);
+
+  *len = p_len + f_len;
+  return plaintext;
+}
+
+/**
+ * Read file into a buffer
+ */
+unsigned char *read_file(const char *filename, int *len)
+{
+  FILE *fp = fopen(filename, "rb");
+  if (!fp) {
+    printf("Error: Cannot open input file %s\n", filename);
+    return NULL;
+  }
+
+  // Get file size
+  fseek(fp, 0, SEEK_END);
+  *len = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+
+  // Allocate buffer and read file
+  unsigned char *buffer = malloc(*len);
+  if (!buffer) {
+    printf("Error: Memory allocation failed\n");
+    fclose(fp);
+    return NULL;
+  }
+
+  size_t read_bytes = fread(buffer, 1, *len, fp);
+  fclose(fp);
+
+  if (read_bytes != *len) {
+    printf("Error: Failed to read entire file\n");
+    free(buffer);
+    return NULL;
+  }
+
+  return buffer;
+}
+
+/**
+ * Write buffer to file
+ */
+int write_file(const char *filename, unsigned char *data, int len)
+{
+  FILE *fp = fopen(filename, "wb");
+  if (!fp) {
+    printf("Error: Cannot open output file %s\n", filename);
+    return -1;
+  }
+
+  size_t written = fwrite(data, 1, len, fp);
+  fclose(fp);
+
+  if (written != len) {
+    printf("Error: Failed to write entire output to %s\n", filename);
+    return -1;
+  }
+
+  return 0;
+}
+
+int main(int argc, char **argv)
+{
+  // Check command-line arguments
+  if (argc != 3) {
+    printf("Usage: %s <key> <input_file.txt>\n", argv[0]);
+    return -1;
+  }
+
+  // Initialize encryption/decryption contexts
+  EVP_CIPHER_CTX *en = EVP_CIPHER_CTX_new();
+  EVP_CIPHER_CTX *de = EVP_CIPHER_CTX_new();
+  if (!en || !de) {
+    printf("Error: Failed to create EVP contexts\n");
+    return -1;
+  }
+
+  // Set up key and salt
+  unsigned char *key_data = (unsigned char *)argv[1];
+  int key_data_len = strlen(argv[1]);
+  unsigned int salt[] = {12345, 54321};
+
+  // Initialize AES cipher
+  if (aes_init(key_data, key_data_len, (unsigned char *)&salt, en, de)) {
+    printf("Couldn't initialize AES cipher\n");
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+
+  // Read input file
+  int len;
+  unsigned char *input_data = read_file(argv[2], &len);
+  if (!input_data) {
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+
+  // Encrypt the data
+  unsigned char *ciphertext = aes_encrypt(en, input_data, &len);
+  if (!ciphertext) {
+    printf("Error: Encryption failed\n");
+    free(input_data);
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+
+  // Write encrypted data to output.enc
+  if (write_file("output.enc", ciphertext, len)) {
+    printf("Error: Failed to write encrypted file\n");
+    free(input_data);
+    free(ciphertext);
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+  printf("Encrypted data written to output.enc\n");
+
+  // Decrypt the ciphertext
+  int dec_len = len;
+  unsigned char *decrypted = aes_decrypt(de, ciphertext, &dec_len);
+  if (!decrypted) {
+    printf("Error: Decryption failed\n");
+    free(input_data);
+    free(ciphertext);
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+
+  // Write decrypted data to output.dec.txt
+  if (write_file("output.dec.txt", decrypted, dec_len)) {
+    printf("Error: Failed to write decrypted file\n");
+    free(input_data);
+    free(ciphertext);
+    free(decrypted);
+    EVP_CIPHER_CTX_free(en);
+    EVP_CIPHER_CTX_free(de);
+    return -1;
+  }
+  printf("Decrypted data written to output.dec.txt\n");
+
+  // Verify decryption matches original input
+  if (dec_len == len && memcmp(input_data, decrypted, dec_len) == 0) {
+    printf("OK: Encryption/decryption successful, input matches output\n");
+  } else {
+    printf("FAIL: Decrypted data does not match input\n");
+  }
+
+  // Clean up
+  free(input_data);
+  free(ciphertext);
+  free(decrypted);
+  EVP_CIPHER_CTX_free(en);
+  EVP_CIPHER_CTX_free(de);
+
+  return 0;
+}
