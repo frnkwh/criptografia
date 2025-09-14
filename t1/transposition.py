@@ -1,12 +1,12 @@
 import numpy as np
 import math
 
-#text = "TRANSPOSITIONCIPHERSSCRAMBLELETTERSLIKEPUZZLEPIECESTOCREATEANINDECIPHERABLEARRANGEMENT"
-#key = "JANEAUSTEN"
-#key2 = "AEROPLANES"
-text = "abcdefghijklmnop"
-key = "zebr"
-key2 = "milen"
+text = "TRANSPOSITIONCIPHERSSCRAMBLELETTERSLIKEPUZZLEPIECESTOCREATEANINDECIPHERABLEARRANGEMENT"
+key = "JANEAUSTEN"
+key2 = "AEROPLANES"
+#text = "abcdefghijklmnop"
+#key = "zebr"
+#key2 = "milen"
 key_len = len(key)
 key_len2 = len(key2)
 def string_to_matrix(text, key_len, pad=" "):
@@ -58,7 +58,12 @@ def transpose_cols(matrix, key_len):
 
 def reverse_transpose_cols(matrix, key_len):
     flat = matrix.flatten()
+    while flat.size > 0 and flat[-1] == "":
+        flat = flat[:-1]
     size = math.ceil(flat.size / key_len)
+    print("Size:", size)
+    print("Key_len:", key_len)
+    flat = flat.copy()
     flat.resize(key_len, size)
     transp = flat.T
 
