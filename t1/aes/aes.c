@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
 	double enc_time = (double)(end - start) / CLOCKS_PER_SEC;
 	log_step("encryption", enc_time, file_name);
 
-	if (write_file("output.enc", ciphertext, len)) {
+	if (write_file("outs/encryptedAES.txt", ciphertext, len)) {
 		printf("Error writing encrypted file\n");
 		free(input_data);
 		free(ciphertext);
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
 	double dec_time = (double)(end - start) / CLOCKS_PER_SEC;
 	log_step("decryption", dec_time, file_name);
 
-	if (write_file("output.dec.txt", decrypted, dec_len)) {
+	if (write_file("outs/decryptedAES.txt", decrypted, dec_len)) {
 		printf("Error writing decrypted file\n");
 		free(input_data);
 		free(ciphertext);

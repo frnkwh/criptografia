@@ -6,7 +6,7 @@ from loguru import logger
 from pathlib import Path
 
 
-logger.add("performance.log", serialize=True)
+logger.add("performanceFCC.log", serialize=True)
 
 
 FILE = None
@@ -330,10 +330,13 @@ def main():
         print(f"Key1: {key}")
         print(f"Key2: {key2}")
 
-    encrypted_file = "encrypted.txt"
-    decrypted_file = "decrypted.txt"
 
     dir_path = Path() / "livros"
+    outs_path = Path() / "outs"
+
+    encrypted_file = outs_path / "encryptedFCC.txt"
+    decrypted_file = outs_path / "decryptedFCC.txt"
+    
     #name = input("Digite o nome do arquivo: ")
     if not name.endswith('.txt'):
         name += '.txt'
