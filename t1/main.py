@@ -2,11 +2,17 @@ import sys
 import numpy as np
 import math
 import time
-from loguru import logger
+import logging
 from pathlib import Path
 
-
-logger.add("performanceFCC.log", serialize=True)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    handlers=[
+        logging.FileHandler("performanceFCC.log", mode='w', encoding='utf-8')
+    ]
+)
+logger = logging.getLogger()
 
 
 FILE = None
@@ -81,46 +87,19 @@ def reverse_transpose_cols(matrix, key_len):
 
 
 def double_transposition(matrix, key, key2, key_len, key_len2):
-    #print("Matriz Original")
-    #print(matrix)
-    #print()
     col = scramble(matrix, key, key_len)
-    #print("Embaralhado")
-    #print(col)
-    #print()
     col_transp = transpose_cols(col, key_len2)
-    #print("Transposto")
-    #print(col_transp)
-    #print()
     col_transp_col = scramble(col_transp, key2, key_len2)
-    #print("Embaralhado 2")
-    #print(col_transp_col)
-    #print()
     col_transp_col_transp = transpose_cols(col_transp_col, key_len2)
-    #print("Transposto 2 e Final:")
-    #print(col_transp_col_transp)
-    #print()
 
     return col_transp_col_transp
 
 
 def reverse_double_transposition(matrix, key, key2, key_len, key_len2):
     reversed = reverse_transpose_cols(matrix, key_len2)
-    #print("Transposta Reversa")
-    #print(reversed)
-    #print()
     reversed = reverse_scramble(reversed, key2, key_len2)
-    #print("Desembaralhada")
-    #print(reversed)
-    #print()
     reversed = reverse_transpose_cols(reversed, key_len)
-    #print("Transposta Reversa 2")
-    #print(reversed)
-    #print()
     reversed = reverse_scramble(reversed, key, key_len)
-    #print("Desembaralhada 2 e final")
-    #print(reversed)
-    #print()
 
     return reversed
 
@@ -153,7 +132,6 @@ def encrypt_autokey(text, key):
     key_len = len(key)
     encrypted_text = []
 
-    # Loop para lidar quando o texto for menor que a chave
     for i in range(min(len(text), key_len)):
         key_letter = key[i]
         encrypted_char = (ord(text[i]) + ord(key_letter)) % 0x110000
@@ -254,16 +232,13 @@ def encrypt_file(input_file, encrypted_file, key1, key2):
 
     start_encrypt = time.perf_counter()
 
-    encrypted_vigenere =  encrypt_autokey(text, key1)
+    encrypted_vigenere = encrypt_autokey(text, key1)
     matrix = string_to_matrix(encrypted_vigenere, key_len)
     encrypted_matrix = double_transposition(matrix, key1, key2, key_len, key_len2)
 
     encrypt_time = time.perf_counter() - start_encrypt
-    logger.info({
-        "step": "encryption",
-        "duration": encrypt_time,
-        "file": FILE
-    })
+    # Log as JSON string
+    logger.info('{"step": "encryption", "duration": %s, "file": "%s"}' % (encrypt_time, FILE))
     print(f"Encryption: {format_time(encrypt_time)}")
     
     print(f"Saving encrypted data to '{encrypted_file}'...")
@@ -295,11 +270,8 @@ def decrypt_file(encrypted_file, decrypted_file, key1, key2):
     decrypted_vigenere = decrypt_autokey(decrypted_text, key1)
 
     decrypt_time = time.perf_counter() - start_decrypt
-    logger.info({
-        "step": "decryption",
-        "duration": decrypt_time,
-        "file": FILE
-    })
+    # Log as JSON string
+    logger.info('{"step": "decryption", "duration": %s, "file": "%s"}' % (decrypt_time, FILE))
     print(f"Decryption: {format_time(decrypt_time)}")
     
     print(f"Saving decrypted text to '{decrypted_file}'...")
@@ -328,7 +300,6 @@ def main():
         print(f"Keys normalized to length {max_len}:")
         print(f"Key1: {key}")
         print(f"Key2: {key2}")
-
 
     dir_path = Path() / "livros"
     outs_path = Path() / "outs"
@@ -381,6 +352,7 @@ def main():
     print(f"- input: {book_path}")
     print(f"- criptografado: {encrypted_file}")
     print(f"- descriptografado: {decrypted_file}")
+
 
 if __name__ == "__main__":
     main()
