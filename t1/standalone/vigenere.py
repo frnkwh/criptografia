@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 def encrypt_vigenere(text, key):
     key_len = len(key)
@@ -60,7 +61,13 @@ def main():
         sys.exit(1)
 
     key = sys.argv[1]
-    path = sys.argv[2]
+    name = sys.argv[2]
+
+    dir_path = Path() / "livros"
+
+    if not name.endswith('.txt'):
+            name += '.txt'
+    path = dir_path / name
 
     # 1. Read input text
     with open(path, "r", encoding="utf-8") as f:
@@ -68,12 +75,12 @@ def main():
 
     # 2. Encrypt
     encrypted_text = encrypt_autokey(text, key)
-    with open("encrypted.txt", "w", encoding="utf-8") as f:
+    with open("encrypted_vigenere.txt", "w", encoding="utf-8") as f:
         f.write(encrypted_text)
 
     # 3. Decrypt
     decrypted_text = decrypt_autokey(encrypted_text, key)
-    with open("decrypted.txt", "w", encoding="utf-8") as f:
+    with open("decrypted_vigenere.txt", "w", encoding="utf-8") as f:
         f.write(decrypted_text)
 
 if __name__ == "__main__":
