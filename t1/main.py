@@ -153,7 +153,8 @@ def encrypt_autokey(text, key):
     key_len = len(key)
     encrypted_text = []
 
-    for i in range(key_len):
+    # Loop para lidar quando o texto for menor que a chave
+    for i in range(min(len(text), key_len)):
         key_letter = key[i]
         encrypted_char = (ord(text[i]) + ord(key_letter)) % 0x110000
         encrypted_text.append(chr(encrypted_char))
@@ -170,8 +171,8 @@ def decrypt_autokey(text, key):
     key_len = len(key)
     decrypted_text = []
     
-    for i in range(key_len):
-        key_letter = key[i % key_len]
+    for i in range(min(len(text), key_len)):
+        key_letter = key[i]
         decrypted_char = (ord(text[i]) - ord(key_letter)) % 0x110000
         decrypted_text.append(chr(decrypted_char))
 
@@ -206,11 +207,9 @@ def load_encrypted_simple(filename, key_len2):
     with open(filename, 'r', encoding='utf-8') as f:
         text = f.read()
     
-    # Calculate correct dimensions
     total_chars = len(text)
     rows = math.ceil(total_chars / key_len2)
     
-    # Pad text to fit matrix dimensions
     expected_size = rows * key_len2
     if len(text) < expected_size:
         text = text.ljust(expected_size, ' ')
@@ -337,7 +336,6 @@ def main():
     encrypted_file = outs_path / "encryptedFCC.txt"
     decrypted_file = outs_path / "decryptedFCC.txt"
     
-    #name = input("Digite o nome do arquivo: ")
     if not name.endswith('.txt'):
         name += '.txt'
     book_path = dir_path / name

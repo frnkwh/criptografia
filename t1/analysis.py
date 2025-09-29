@@ -11,7 +11,6 @@ def run_encryption_decryption():
     key2 = "frank"
     books = ["RipVanWinkle", "BlackBeauty", "TheBrothersKaramazov"]
 
-    # run 10 times for each book
     for book in books:
         for i in range(10):
             print(f"Running with {book}, attempt {i+1}/10")
@@ -23,7 +22,6 @@ def run_encryption_decryption_aes():
     key = "milenalinda"
     books = ["RipVanWinkle", "BlackBeauty", "TheBrothersKaramazov"]
 
-    # run 10 times for each book
     for book in books:
         input_file = f"livros/{book}.txt"
         for i in range(10):
@@ -33,7 +31,6 @@ def run_encryption_decryption_aes():
 
 
 def analysis():
-    # read log 
     with open("performanceFCC.log") as f:
         logs = [json.loads(line) for line in f]
 
@@ -56,44 +53,56 @@ def analysis():
     print(df)
 
 
-def plot_algorithm_comparison(csv_file, output_image='comparison_plot.png'):
+def plot_algorithm_comparison(csv_file, encryption_output='encryption_plot.png', decryption_output='decryption_plot.png'):
     df = pd.read_csv(csv_file)
     
-    median_data = df.groupby(['file', 'algorithm', 'step'])['duration'].median().reset_index()
+    book_order = ['RipVanWinkle', 'BlackBeauty', 'TheBrothersKaramazov']
+    size_labels = {'RipVanWinkle': '<10kb', 'BlackBeauty': '<100kb', 'TheBrothersKaramazov': '>1mb'}
+    
+    df['file_with_size'] = df['file'].map(lambda x: f"{x} ({size_labels[x]})")
+    
+    df['file_with_size'] = pd.Categorical(df['file_with_size'], 
+                                         categories=[f"{book} ({size_labels[book]})" for book in book_order], 
+                                         ordered=True)
+    
+    median_data = df.groupby(['file_with_size', 'algorithm', 'step'], observed=False)['duration'].median().reset_index()
     
     sns.set_style("whitegrid")
     
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
-    
     encryption_data = median_data[median_data['step'] == 'encryption']
-    sns.barplot(data=encryption_data, x='file', y='duration', hue='algorithm', ax=ax1)
-    ax1.set_title('Tempo Médio de Criptografia por Arquivo e Algoritmo')
-    ax1.set_xlabel('Livro')
-    ax1.set_ylabel('Duração Média (segundos)')
-    ax1.set_yscale('log')
-    ax1.tick_params(axis='x', rotation=45)
+    plt.figure(figsize=(8, 6))
+    sns.barplot(data=encryption_data, x='file_with_size', y='duration', hue='algorithm')
+    plt.title('Tempo Médio de Criptografia por Arquivo e Algoritmo')
+    plt.xlabel('Livro')
+    plt.ylabel('Duração Média (segundos)')
+    plt.yscale('log')
+    plt.xticks(rotation=45)
+    plt.legend(title='Algoritmo')
+    plt.tight_layout()
+    plt.savefig(encryption_output, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Encryption plot saved as {encryption_output}")
     
     decryption_data = median_data[median_data['step'] == 'decryption']
-    sns.barplot(data=decryption_data, x='file', y='duration', hue='algorithm', ax=ax2)
-    ax2.set_title('Tempo Médio de Descriptografia por Arquivo e Algoritmo')
-    ax2.set_xlabel('Livro')
-    ax2.set_ylabel('Duração Média (segundos)')
-    ax2.set_yscale('log')
-    ax2.tick_params(axis='x', rotation=45)
-    
+    plt.figure(figsize=(8, 6))
+    sns.barplot(data=decryption_data, x='file_with_size', y='duration', hue='algorithm')
+    plt.title('Tempo Médio de Descriptografia por Arquivo e Algoritmo')
+    plt.xlabel('Livro')
+    plt.ylabel('Duração Média (segundos)')
+    plt.yscale('log')
+    plt.xticks(rotation=45)
+    plt.legend(title='Algoritmo')
     plt.tight_layout()
-    ax2.legend_.remove()
-    ax1.legend(title='Algoritmo')
-    
-    plt.savefig(output_image, dpi=300, bbox_inches='tight')
-    print(f"Plot saved as {output_image}")
-    
+    plt.savefig(decryption_output, dpi=300, bbox_inches='tight')
+    plt.close()
+    print(f"Decryption plot saved as {decryption_output}")
+
 
 def main():
 #    run_encryption_decryption()
 #    run_encryption_decryption_aes()
 #    analysis()
-    plot_algorithm_comparison('results.csv', 'comparison_plot.png')
+    plot_algorithm_comparison('results.csv', 'encryption_plot.png', 'decryption_plot.png')
 
 if __name__ == "__main__":
     main()
